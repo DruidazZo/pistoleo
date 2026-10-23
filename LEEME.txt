@@ -3,7 +3,8 @@ PÁGINA PARA PISTOLEAR CON EL CELULAR
 
 Esta carpeta es la página web que se abre en el celular al escanear el
 código QR del programa (Inventario > Opciones > Pistolear con el celular).
-Está publicada en GitHub Pages; su dirección va en
+Está publicada en GitHub Pages (https://druidazzo.github.io/pistoleo/,
+repositorio github.com/DruidazZo/pistoleo); su dirección va en
 codigo_fuente\assets\google\script.json, campo "celular", y entra en el .exe
 al ejecutar CONSTRUIR_EXE.bat.
 
