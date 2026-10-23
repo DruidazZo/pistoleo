@@ -10,7 +10,8 @@
 const FORMATOS_BARRAS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39"];
 const MS_MISMO_CODIGO = 1500;   // un código que sigue frente a la cámara no se cuenta otra vez
 const MS_ENTRE_LECTURAS = 700;  // pausa mínima entre dos lecturas con la cámara
-const MS_DOBLE = 3000;          // aviso si el mismo código se lee dos veces seguidas en este lapso
+const MS_DOBLE = 3000;          // aviso si la cámara lee el mismo código dos veces seguidas en este lapso
+const MS_DOBLE_PISTOLA = 600;   // con pistola (igual que en el PC): dos productos iguales se pistolean rápido
 const MS_PING = 20000;          // sin nada que enviar, cada cuánto se pregunta por el inventario
 const MS_REINTENTO_MAX = 30000;
 const POR_ENVIO = 200;
@@ -312,7 +313,7 @@ function revisarInventario(enCurso) {
 // ---------------------------------------------------------------- lecturas
 let ultimaMostrada = null;
 
-function anotar(texto) {
+function anotar(texto, via) {
   const codigo = String(texto == null ? "" : texto).replace(/\s+/g, "").replace(/^['’`´]+/, "");
   if (!codigo || !config) return;
   const normal = normalizarCodigo(codigo);
@@ -323,7 +324,8 @@ function anotar(texto) {
   }
   const ahora = Date.now();
   const anterior = vigentes().pop();
-  const doble = anterior && normalizarCodigo(anterior.codigo) === normal && ahora - anterior.t < MS_DOBLE;
+  const ventana = via === "camara" ? MS_DOBLE : MS_DOBLE_PISTOLA;
+  const doble = anterior && normalizarCodigo(anterior.codigo) === normal && ahora - anterior.t < ventana;
   const lectura = { id: nuevoId(), codigo, hora: horaTexto(new Date(ahora)), t: ahora, env: 0, anul: 0, anulEnv: 0 };
   datos.lista.push(lectura);
   guardarDatos();
@@ -584,7 +586,7 @@ function alDetectar(resultados) {
   if (elegido && ahora - ultimaCamara >= MS_ENTRE_LECTURAS) {
     vistos.set(elegido, ahora);
     ultimaCamara = ahora;
-    anotar(elegido);
+    anotar(elegido, "camara");
   }
   if (vistos.size > 100) vistos.forEach((t, c) => { if (ahora - t > 10000) vistos.delete(c); });
 }
@@ -694,6 +696,7 @@ function pintarTodo() {
   $("tienda").textContent = tienda;
   $("inicio-tienda").textContent = tienda ? "Tienda: " + tienda : "";
   $("btn-menu").classList.toggle("oculto", !config || vista === "vincular");
+  pintarMenuCamara();
   pintarRed();
   pintarContadores();
 }
@@ -788,17 +791,40 @@ function pintarLecturas() {
 }
 
 // ---------------------------------------------------------------- acciones
-async function empezar() {
+async function empezar(conCamara) {
   prepararAudio();
   equipo.nombre = $("inp-nombre").value.replace(/\s+/g, " ").trim().slice(0, 30);
   almacen.guardar("equipo", equipo);
   mostrarVista("pistoleo");
   if (!$("res-titulo").textContent) {
-    mostrarResultado("info", "Listo para pistolear", "Apunta la cámara al código de barras, dentro del recuadro.");
+    mostrarResultado("info", "Listo para pistolear", conCamara
+      ? "Apunta la cámara al código de barras, dentro del recuadro."
+      : "Dispara la pistola al código de barras de cada producto.");
   }
   mantenerPantalla();
+  await ponerCamara(conCamara);
+}
+
+// Con cámara o con una pistola conectada al celular (la pistola funciona en los dos casos).
+async function ponerCamara(encender) {
+  equipo.camara = encender;
+  almacen.guardar("equipo", equipo);
+  $("hueco-pistoleo").classList.toggle("oculto", !encender);
+  $("sin-camara").classList.toggle("oculto", encender);
+  pintarMenuCamara();
+  if (!encender) {
+    cerrarCamara();
+    return true;
+  }
   const ok = await abrirCamara("barras", "hueco-pistoleo");
   if (!ok) $("form-escribir").classList.remove("oculto");
+  return ok;
+}
+
+function pintarMenuCamara() {
+  const b = document.querySelector('[data-accion="camara"]');
+  b.classList.toggle("oculto", vista !== "pistoleo");
+  b.textContent = equipo.camara === false ? "Usar la cámara" : "Apagar la cámara (usar pistola)";
 }
 
 async function vincular() {
@@ -854,8 +880,8 @@ function accionMenu(accion) {
     }
   } else if (accion === "stock") {
     cargarStock(true);
-  } else if (accion === "pausar") {
-    mostrarVista("inicio");
+  } else if (accion === "camara") {
+    ponerCamara(equipo.camara === false);
   } else if (accion === "vincular") {
     mostrarVista("vincular");
   } else if (accion === "instalar") {
@@ -863,18 +889,26 @@ function accionMenu(accion) {
   }
 }
 
-// Una pistola Bluetooth conectada al celular escribe como un teclado y termina con Enter.
+// Una pistola conectada al celular (Bluetooth o cable) escribe como un teclado, muy rápido,
+// y termina con Enter (algunas con Tab). No hace falta tocar ningún campo.
 let teclas = "";
 let ultimaTecla = 0;
 function alTeclear(e) {
-  if (vista !== "pistoleo" || e.target instanceof HTMLInputElement) return;
+  if (!config || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  if (vista !== "pistoleo" && vista !== "inicio") return;
   const ahora = performance.now();
-  if (ahora - ultimaTecla > 120) teclas = "";
+  if (ahora - ultimaTecla > 150) teclas = "";
   ultimaTecla = ahora;
-  if (e.key === "Enter") {
-    if (teclas.length >= 4) anotar(teclas);
+  if (e.key === "Enter" || e.key === "Tab") {
+    const codigo = teclas;
     teclas = "";
+    if (codigo.length < 4) return;
+    e.preventDefault();  // que el Enter de la pistola no «toque» el último botón usado
+    prepararAudio();
+    if (vista !== "pistoleo") empezar(false);  // llegó un código de la pistola: a pistolear sin cámara
+    anotar(codigo, "pistola");
   } else if (e.key.length === 1) {
+    if (teclas && e.key === " ") e.preventDefault();  // un espacio dentro del código no toca un botón
     teclas += e.key;
   }
 }
@@ -888,7 +922,14 @@ function iniciar() {
     cargarTienda();
   }
 
-  $("btn-empezar").addEventListener("click", empezar);
+  $("btn-empezar").addEventListener("click", () => empezar(true));
+  $("btn-pistola").addEventListener("click", () => empezar(false));
+  $("btn-encender-camara").addEventListener("click", () => ponerCamara(true));
+  // un botón tocado no se queda con el foco: así el Enter de una pistola nunca lo vuelve a apretar
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (b) b.blur();
+  });
   $("btn-vincular").addEventListener("click", vincular);
   $("btn-vincular-volver").addEventListener("click", () => mostrarVista("inicio"));
   $("btn-deshacer").addEventListener("click", deshacer);
@@ -902,7 +943,7 @@ function iniciar() {
     prepararAudio();
     const valor = $("inp-codigo").value;
     $("inp-codigo").value = "";
-    anotar(valor);
+    anotar(valor, "teclado");
     $("inp-codigo").focus();
   });
   $("btn-linterna").addEventListener("click", alternarLinterna);
@@ -942,7 +983,7 @@ function iniciar() {
       programarEnvio(0);
       if (vista === "pistoleo") {
         mantenerPantalla();
-        if (!stream) abrirCamara("barras", "hueco-pistoleo");
+        if (!stream && equipo.camara !== false) abrirCamara("barras", "hueco-pistoleo");
       }
     } else if (stream && vista === "pistoleo") {
       cerrarCamara();  // al salir de la página se libera la cámara

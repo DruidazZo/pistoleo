@@ -168,6 +168,7 @@
       <input id="inp-nombre" class="texto" type="text" maxlength="30" autocomplete="name" placeholder="Por ejemplo: Ana">
     </div>
     <button id="btn-empezar" class="btn principal" type="button">Empezar a pistolear</button>
+    <button id="btn-pistola" class="btn" type="button">Usar una pistola conectada (sin cámara)</button>
     <button id="btn-instalar" class="btn oculto" type="button">Agregar a la pantalla de inicio</button>
     <p id="ayuda-ios" class="gris oculto">Para tenerla como app: botón Compartir → «Agregar a inicio».</p>
   </section>
@@ -180,6 +181,12 @@
         <div id="guia"><div id="laser"></div></div>
         <div id="camara-msg"></div>
       </div>
+    </div>
+    <div id="sin-camara" class="tarjeta oculto">
+      <h1>Lista para la pistola</h1>
+      <p>Dispara la pistola al código de barras de cada producto: aparece aquí abajo.</p>
+      <p class="gris">La pistola se conecta al celular por Bluetooth (o con cable) y funciona como un teclado.</p>
+      <button id="btn-encender-camara" class="btn" type="button">Usar la cámara</button>
     </div>
     <div id="resultado" class="resultado info">
       <div class="res-cabeza">
@@ -210,7 +217,7 @@
     <button class="btn" data-accion="lecturas" type="button">Ver mis lecturas</button>
     <button class="btn" data-accion="nombre" type="button">Cambiar mi nombre</button>
     <button class="btn" data-accion="stock" type="button">Actualizar lista de productos</button>
-    <button class="btn" data-accion="pausar" type="button">Apagar la cámara</button>
+    <button class="btn" data-accion="camara" type="button">Apagar la cámara (usar pistola)</button>
     <button class="btn" data-accion="vincular" type="button">Vincular otra tienda</button>
     <button class="btn oculto" data-accion="instalar" type="button">Agregar a la pantalla de inicio</button>
     <button class="btn principal" data-accion="cerrar" type="button">Cerrar</button>
