@@ -232,7 +232,9 @@ async function llamar(accion, extra) {
   }
   if (!r.ok) {
     if (r.error === "Clave incorrecta.") {
-      throw new Error("Falta actualizar el Apps Script a la versión 2 (ver APPS_SCRIPT_TIENDAS.txt).");
+      throw new Error("La hoja de la tienda todavía no recibe lecturas del celular: falta actualizar el Apps Script "
+        + "a la versión 2. Avisa a quien administra el programa.\n\nLas lecturas quedan guardadas en este celular "
+        + "y se enviarán solas cuando esté listo.");
     }
     throw Object.assign(new Error(r.error || "Error desconocido."), { motivo: r.motivo, reintentar: r.reintentar });
   }
@@ -717,7 +719,7 @@ function pintarRed() {
     texto = `● Sin internet${quedan ? ` · ${quedan} por enviar (se envían solas)` : ""}`;
     clase = "mal";
   } else if (red.estado === "error") {
-    texto = `● No se pudo enviar${quedan ? ` · ${quedan} por enviar` : ""} · toca para ver por qué`;
+    texto = `● No se pudo enviar${quedan ? ` · ${quedan} guardadas en el celular` : ""} · toca para ver por qué`;
     clase = "mal";
   } else if (red.estado === "ok") {
     texto = quedan ? `● ${quedan} por enviar…` : "● Conectado · todo enviado";
