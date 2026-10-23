@@ -1,0 +1,28 @@
+PÁGINA PARA PISTOLEAR CON EL CELULAR
+====================================
+
+Esta carpeta es la página web que se abre en el celular al escanear el
+código QR del programa (Inventario > Opciones > Pistolear con el celular).
+Está publicada en GitHub Pages; su dirección va en
+codigo_fuente\assets\google\script.json, campo "celular", y entra en el .exe
+al ejecutar CONSTRUIR_EXE.bat.
+
+No contiene claves: el permiso de cada tienda viaja en el código QR (después
+del #, así no llega al servidor de la página) y solo sirve para anotar
+lecturas en la pestaña Pistoleo de esa tienda, a través del Apps Script
+(ver assets\APPS_SCRIPT_TIENDAS.txt, versión 2).
+
+Archivos
+ · index.html, app.js       la página.
+ · sw.js                    guarda la página en el celular para que abra sin
+                            internet. Si cambias algo de la carpeta lector,
+                            cambia también el nombre CACHE de este archivo.
+ · manifest.webmanifest y   para "Agregar a la pantalla de inicio".
+   icono-*.png
+ · lector/                  lector de códigos de barras para los celulares
+                            cuyo navegador no trae uno (por ejemplo iPhone).
+                            Ver lector/LICENCIAS.txt.
+
+Para publicar un cambio: sube el contenido de esta carpeta (no la carpeta
+en sí) a la rama main del repositorio de GitHub Pages. La página se
+actualiza sola en los celulares la próxima vez que la abren con internet.

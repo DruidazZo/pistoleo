@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Pistoleo de inventario</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<style>
+  :root {
+    --amarillo: #FFCD00; --negro: #111111; --gris-oscuro: #1C1C1C; --gris: #2B2B2B; --gris-medio: #3B3B3B;
+    --borde: #4A4A4A; --texto-gris: #A0A0A0; --blanco: #F2F2F2; --verde: #7CD67C; --rojo: #FF7A6B; --naranjo: #FFB347;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--negro); color: var(--blanco);
+    font: 17px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; min-height: 100dvh;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  .oculto { display: none !important; }
+
+  /* cabecera */
+  header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px 8px 16px;
+    border-bottom: 3px solid var(--amarillo); background: var(--negro);
+  }
+  .marca { color: var(--amarillo); font-weight: 800; letter-spacing: .08em; font-size: 13px; }
+  #tienda { flex: 1; font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #btn-menu {
+    width: 48px; height: 48px; border: 0; border-radius: 10px; background: var(--gris); color: var(--blanco);
+    font-size: 26px; line-height: 1;
+  }
+  #estado-red {
+    margin: 8px 12px 0; padding: 8px 12px; border-radius: 10px; background: var(--gris-oscuro);
+    font-size: 15px; color: var(--texto-gris); border: 0; text-align: left; width: calc(100% - 24px);
+  }
+  #estado-red.ok { color: var(--verde); }
+  #estado-red.pendiente { color: var(--amarillo); }
+  #estado-red.mal { color: var(--rojo); }
+  .aviso {
+    margin: 8px 12px 0; padding: 10px 12px; border-radius: 10px; font-size: 15px;
+    background: #3a2a10; color: var(--naranjo); border: 1px solid #6b4a14;
+  }
+
+  main { flex: 1; display: flex; flex-direction: column; padding: 12px; gap: 12px; }
+  .vista { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .tarjeta { background: var(--gris-oscuro); border-radius: 14px; padding: 18px 16px; }
+  h1 { margin: 0 0 8px; font-size: 24px; color: var(--amarillo); }
+  p { margin: 8px 0; }
+  .gris { color: var(--texto-gris); font-size: 15px; }
+  ol { margin: 8px 0; padding-left: 22px; }
+  ol li { margin: 6px 0; }
+
+  .btn {
+    display: block; width: 100%; min-height: 58px; border: 0; border-radius: 12px; padding: 12px 16px;
+    font-size: 19px; font-weight: 700; background: var(--gris-medio); color: var(--blanco);
+  }
+  .btn.principal { background: var(--amarillo); color: var(--negro); min-height: 72px; font-size: 22px; }
+  .btn:active { filter: brightness(1.15); }
+  .btn:disabled { opacity: .45; }
+  label.campo { display: block; font-size: 15px; color: var(--amarillo); margin: 14px 0 6px; }
+  input.texto {
+    width: 100%; min-height: 54px; border-radius: 10px; border: 1px solid var(--borde); background: var(--gris);
+    color: var(--blanco); padding: 10px 12px; font-size: 19px;
+  }
+  input.texto:focus { outline: 2px solid var(--amarillo); border-color: transparent; }
+
+  /* cámara */
+  .hueco-camara { position: relative; }
+  #camara {
+    position: relative; width: 100%; height: 38vh; min-height: 210px; max-height: 420px;
+    background: #000; border-radius: 14px; overflow: hidden;
+  }
+  #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #guia {
+    position: absolute; left: 7%; width: 86%; top: 30%; height: 40%;
+    border: 3px solid rgba(255, 205, 0, .9); border-radius: 12px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35);
+  }
+  #camara[data-modo="qr"] #guia { left: 50%; top: 50%; width: min(70%, 34vh); height: auto; aspect-ratio: 1; transform: translate(-50%, -50%); }
+  #laser { position: absolute; left: 4%; right: 4%; top: 50%; height: 2px; background: #ff3b30; box-shadow: 0 0 8px #ff3b30; }
+  #camara[data-modo="qr"] #laser { display: none; }
+  #camara.leido #guia { border-color: var(--verde); }
+  #camara-msg {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; font-size: 16px; text-align: center;
+    background: rgba(0, 0, 0, .7); color: var(--blanco);
+  }
+  #camara-msg:empty { display: none; }
+
+  /* resultado de la última lectura */
+  .resultado { border-radius: 14px; padding: 14px 16px; background: var(--gris-oscuro); border-left: 8px solid var(--borde); }
+  .resultado.ok { border-left-color: var(--verde); }
+  .resultado.error { border-left-color: var(--rojo); background: #2c1714; }
+  .resultado.aviso { border-left-color: var(--naranjo); background: #2b2212; }
+  .res-cabeza { display: flex; gap: 10px; align-items: flex-start; }
+  #res-icono { font-size: 30px; line-height: 1; font-weight: 800; }
+  .resultado.ok #res-icono { color: var(--verde); }
+  .resultado.error #res-icono { color: var(--rojo); }
+  .resultado.aviso #res-icono { color: var(--naranjo); }
+  #res-titulo { font-size: 23px; font-weight: 800; line-height: 1.2; word-break: break-word; }
+  #res-detalle { margin-top: 6px; font-size: 18px; white-space: pre-line; }
+  #res-codigo { margin-top: 6px; font-size: 15px; color: var(--texto-gris); font-variant-numeric: tabular-nums; }
+  #contadores { font-size: 16px; color: var(--texto-gris); text-align: center; white-space: pre-line; }
+  #contadores b { color: var(--blanco); font-size: 20px; }
+  .fila-botones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fila-botones .btn { font-size: 17px; }
+  #form-escribir { display: flex; gap: 8px; }
+  #form-escribir .btn { width: auto; min-width: 110px; background: var(--amarillo); color: var(--negro); }
+
+  /* menú y lista */
+  .capa { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); display: flex; align-items: flex-end; z-index: 10; }
+  .hoja {
+    width: 100%; max-height: 88dvh; overflow: auto; background: var(--gris-oscuro); border-radius: 18px 18px 0 0;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px;
+  }
+  .hoja h2 { margin: 2px 4px 4px; font-size: 20px; color: var(--amarillo); }
+  .lectura { display: flex; gap: 10px; align-items: center; padding: 10px 6px; border-bottom: 1px solid var(--gris); }
+  .lectura .que { flex: 1; min-width: 0; }
+  .lectura .prod { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lectura .meta { font-size: 14px; color: var(--texto-gris); }
+  .lectura.anulada .prod { text-decoration: line-through; color: var(--texto-gris); }
+  .lectura button { min-height: 44px; border: 0; border-radius: 10px; background: var(--gris-medio); color: var(--rojo); padding: 0 12px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="marca">PISTOLEO</div>
+  </div>
+  <div id="tienda"></div>
+  <button id="btn-menu" class="oculto" aria-label="Menú">⋮</button>
+</header>
+<button id="estado-red" class="oculto" type="button"></button>
+<div id="aviso-inventario" class="aviso oculto">En el PC no hay un inventario abierto para esta tienda. Puedes pistolear igual: al empezar el inventario en el PC se podrán sumar estas lecturas.</div>
+<div id="aviso-guardado" class="aviso oculto">No se pudo guardar en la memoria del celular. Las lecturas se siguen enviando, pero no cierres esta página hasta que diga «todo enviado».</div>
+
+<main>
+  <!-- sin tienda: se vincula escaneando el código QR que muestra el programa del PC -->
+  <section id="vista-vincular" class="vista oculto">
+    <div class="tarjeta">
+      <h1>Vincula este celular con la tienda</h1>
+      <ol>
+        <li>En el PC: pestaña <b>Inventario</b> → <b>Opciones</b> → <b>Pistolear con el celular</b>.</li>
+        <li>Presiona el botón de abajo y apunta la cámara al código QR de la pantalla del PC.</li>
+      </ol>
+      <p class="gris">También sirve apuntar al código con la cámara normal del celular y tocar el enlace que aparece.</p>
+    </div>
+    <div id="hueco-vincular" class="hueco-camara"></div>
+    <button id="btn-vincular" class="btn principal" type="button">Escanear el código del PC</button>
+    <button id="btn-vincular-volver" class="btn oculto" type="button">Volver</button>
+  </section>
+
+  <!-- tienda lista, cámara apagada -->
+  <section id="vista-inicio" class="vista oculto">
+    <div class="tarjeta">
+      <h1 id="inicio-tienda"></h1>
+      <p>Apunta la cámara al código de barras de cada producto. Cada lectura se guarda en el celular y se envía sola a la hoja de la tienda.</p>
+      <p class="gris">Para contar dos productos iguales, aparta la cámara y vuelve a apuntar.</p>
+      <label class="campo" for="inp-nombre">Tu nombre (opcional)</label>
+      <input id="inp-nombre" class="texto" type="text" maxlength="30" autocomplete="name" placeholder="Por ejemplo: Ana">
+    </div>
+    <button id="btn-empezar" class="btn principal" type="button">Empezar a pistolear</button>
+    <button id="btn-instalar" class="btn oculto" type="button">Agregar a la pantalla de inicio</button>
+    <p id="ayuda-ios" class="gris oculto">Para tenerla como app: botón Compartir → «Agregar a inicio».</p>
+  </section>
+
+  <!-- pistoleando -->
+  <section id="vista-pistoleo" class="vista oculto">
+    <div id="hueco-pistoleo" class="hueco-camara">
+      <div id="camara" data-modo="barras">
+        <video id="video" playsinline muted autoplay></video>
+        <div id="guia"><div id="laser"></div></div>
+        <div id="camara-msg"></div>
+      </div>
+    </div>
+    <div id="resultado" class="resultado info">
+      <div class="res-cabeza">
+        <div id="res-icono"></div>
+        <div>
+          <div id="res-titulo"></div>
+          <div id="res-detalle"></div>
+          <div id="res-codigo"></div>
+        </div>
+      </div>
+    </div>
+    <div id="contadores"></div>
+    <div class="fila-botones">
+      <button id="btn-deshacer" class="btn" type="button">↶ Deshacer último</button>
+      <button id="btn-escribir" class="btn" type="button">⌨ Escribir código</button>
+    </div>
+    <form id="form-escribir" class="oculto" autocomplete="off">
+      <input id="inp-codigo" class="texto" type="text" inputmode="numeric" maxlength="40" placeholder="Código de barras">
+      <button class="btn" type="submit">Anotar</button>
+    </form>
+    <button id="btn-linterna" class="btn oculto" type="button">Encender linterna</button>
+  </section>
+</main>
+
+<div id="capa-menu" class="capa oculto">
+  <div class="hoja" role="menu">
+    <h2>Opciones</h2>
+    <button class="btn" data-accion="lecturas" type="button">Ver mis lecturas</button>
+    <button class="btn" data-accion="nombre" type="button">Cambiar mi nombre</button>
+    <button class="btn" data-accion="stock" type="button">Actualizar lista de productos</button>
+    <button class="btn" data-accion="pausar" type="button">Apagar la cámara</button>
+    <button class="btn" data-accion="vincular" type="button">Vincular otra tienda</button>
+    <button class="btn oculto" data-accion="instalar" type="button">Agregar a la pantalla de inicio</button>
+    <button class="btn principal" data-accion="cerrar" type="button">Cerrar</button>
+  </div>
+</div>
+
+<div id="capa-lecturas" class="capa oculto">
+  <div class="hoja">
+    <h2>Mis lecturas</h2>
+    <div id="lecturas-resumen" class="gris"></div>
+    <div id="lista-lecturas"></div>
+    <button id="btn-cerrar-lecturas" class="btn principal" type="button">Cerrar</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
